@@ -10,8 +10,7 @@ from string import lstrip, rstrip, lower
 
 
 def test_case():
-    return extract_lyrics(
-        'http://www.songlyrics.com/air-supply/all-out-of-love-lyrics/')
+    return extract_lyrics('air supply', 'all out of love')
 
 
 def build_address(artist, title):
@@ -21,9 +20,9 @@ def build_address(artist, title):
     return base % (artist, title)
 
 
-def extract_lyrics(address):
+def extract_lyrics(artist, title):
     try:
-        con = ul2.urlopen(address)
+        con = ul2.urlopen(build_address(artist, title))
         html = con.readlines()
     except:
         print 'There was a problem opening URL.'
