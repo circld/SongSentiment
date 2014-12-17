@@ -8,12 +8,9 @@ import urllib2
 
 class test_build_address(object):
 
-    artist = 'eminem'
-    song = 'lose-yourself'
+    artist = 'olivia newton john/electric light orchestra'
+    song = 'xanadu'
     address = lyrics.build_address(artist, song)
-
-    def test_build_address(self):
-        assert (self.artist in self.address and self.song in self.address)
 
     def test_build_address_valid_url(self):
         assert urllib2.urlopen(self.address).getcode() == 200

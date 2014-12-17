@@ -9,6 +9,9 @@ Main body of project:
 import billboard.billboard as bb
 from bs4 import BeautifulSoup
 from lyrics import extract_lyrics
+from alchemyapi.alchemyapi import AlchemyAPI
+import re
+import pickle
 
 
 class EntrySentiment(bb.ChartEntry):
@@ -16,14 +19,19 @@ class EntrySentiment(bb.ChartEntry):
     def __init__(self, title, artist, peakPos, lastPos, weeks, rank, change):
         bb.ChartEntry.__init__(self, title, artist, peakPos, lastPos, weeks,
                                rank, change)
-        self.lyrics = 'hi'  # extract_lyrics()
-        self.sentiment = 0.0
+        self.lyrics = extract_lyrics(self.artist, self.title)
+        self.success = self.lyrics[:7] != 'http://'
 
 
 class ChartSentiment(bb.ChartData):
 
     def __init__(self, name, date):
         bb.ChartData.__init__(self, name, date)
+        self.no_lyrics = [(i.artist, i.title, i.lyrics)
+                          for i in self.entries if not i.success]
+        self.all_lyrics = ' '.join([j.lyrics for j in self.entries
+                                    if j.success])
+        # self.sentiment = extract_sentiment(self.all_lyrics)
 
     def fetchEntries(self, all=False):
         if self.latest:
@@ -70,7 +78,8 @@ class ChartSentiment(bb.ChartData):
             else:
                 change = str(change)
 
-            self.entries.append(EntrySentiment(title, artist, peakPos, lastPos, weeks, rank, change))
+            self.entries.append(EntrySentiment(title, artist, peakPos, lastPos,
+                                               weeks, rank, change))
 
 
 # test case
@@ -107,12 +116,20 @@ def saturdays(start_date=None, end_date=None):
 
     return date_range(start_date, end_date)
 
-# TODO: complete extraction function to pull all rankings for each date
-# >>> need to think about how to store data
-def extract_billboard_rankings(datelist):
-    pass
+
+def extract_sentiment(lyrics):
+    alchemy = AlchemyAPI()
+    return float(alchemy.sentiment('text', lyrics)['docSentiment']['score'])
+
+
+def extract_billboard_rankings(start=None, end=None):
+    date_list = saturdays(start, end)
+    return date_list
     # print str(saturdays()[0].date())
 
-new = ChartSentiment('hot-100', '1980-09-20')
+# new = ChartSentiment('hot-100', '1980-09-20')
+# newest = ChartSentiment('hot-100', '2014-12-13')
+print 'hi'
 
-# TODO: complete lyric extraction over collection of songs
+# TODO: complete extraction function to pull all rankings for each date
+# TODO: add AlchemyApi attribution (http://www.alchemyapi.com/api/calling-the-api/)
