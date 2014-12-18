@@ -15,16 +15,22 @@ def test_case():
 
 
 def build_address(artist, title):
-    # TODO: comment purpose of each step (refactor if necessary)
     base = 'http://www.songlyrics.com/%s/%s-lyrics/'
     artist = rstrip(lstrip(lower(artist)))
     title = rstrip(lstrip(lower(title)))
+    # remove leading 'the ', ampersands, or
+    # anything following a slash or variants of featuring
     artist = subn(r"(^the |/.*$|[&]| and his band| f.{5}ing.*$|" +
                   r" ft[.].*$| feat[.]? .*$)", '', artist)[0]
+    # replace space(s) or punctuation with hyphen
     artist = subn(r"(\s+|[',.])", '-', artist)[0]
+    # remove non-leading parens and everything after
     title = subn(r'(?<!^)[(].*?[)].*$', '', title)[0]
-    title = subn(r'(^[(]|[)]|[%s]$|/.*$)' % punctuation,
-                 '', title)[0]
+    # remove leading parens (leave content) & all consecutive
+    # punctuation at EOL
+    title = subn(r'(^[(]|[)]|[%s]+$|/.*$)' % punctuation,
+                 '', rstrip(title))[0]
+    # replace space or (multiple) punctuation followed by space with a hyphen
     title = subn(r"(\s|[',.)]+\s*)", '-', rstrip(title))[0]
     return base % (artist, title)
 
@@ -48,5 +54,7 @@ def extract_lyrics(artist, title):
                             if not hasattr(i, 'content')])
         lyrics = subn(r'(\n|[\W])', ' ', lyrics)[0]  # remove non-alphanumeric
         lyrics = subn(r'\s+', ' ', lyrics)[0]  # replace mult spaces with single
+        if lyrics == '':
+            return song_url
         return str(lyrics)
 

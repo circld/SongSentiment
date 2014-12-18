@@ -14,24 +14,59 @@ import re
 import pickle
 
 
+class SongData(object):
+
+    def __init__(self):
+        self.data = dict()
+
+    def has_song(self, artist, title):
+        return (artist + title) in self.data.keys()
+
+    def add_song(self, artist, title, lyrics, sentiment):
+        self.data[artist+title] = dict()
+        self.data[artist+title]['lyrics'] = lyrics
+        self.data[artist+title]['sentiment'] = sentiment
+
+    def get_lyrics(self, artist, title):
+        return self.data[artist+title]['lyrics']
+
+    def get_sentiment(self, artist, title):
+        return self.data[artist+title]['sentiment']
+
+    def has_lyrics(self, artist, title):
+        return self.data[artist+title]['lyrics'][:7] != 'http://'
+
+
 class EntrySentiment(bb.ChartEntry):
+
+    store = SongData()
 
     def __init__(self, title, artist, peakPos, lastPos, weeks, rank, change):
         bb.ChartEntry.__init__(self, title, artist, peakPos, lastPos, weeks,
                                rank, change)
-        self.lyrics = extract_lyrics(self.artist, self.title)
-        self.success = self.lyrics[:7] != 'http://'
+        if not self.store.has_song(self.artist, self.title):
+            lyrics = extract_lyrics(self.artist, self.title)
+            self.success = lyrics[:7] != 'http://'
+            sentiment = self.success and extract_sentiment(lyrics) or 0.0
+            self.store.add_song(self.artist, self.title, lyrics, sentiment)
+        else:
+            self.success = self.store.has_lyrics(self.artist, self.title)
+
+    def get_lyrics(self):
+        return self.store.get_lyrics(self.artist, self.title)
+
+    def get_sentiment(self):
+        return self.store.get_sentiment(self.artist, self.title)
 
 
 class ChartSentiment(bb.ChartData):
 
     def __init__(self, name, date):
         bb.ChartData.__init__(self, name, date)
-        self.no_lyrics = [(i.artist, i.title, i.lyrics)
+        self.no_lyrics = [(i.artist, i.title, i.get_lyrics())
                           for i in self.entries if not i.success]
-        self.all_lyrics = ' '.join([j.lyrics for j in self.entries
-                                    if j.success])
-        # self.sentiment = extract_sentiment(self.all_lyrics)
+        sent_list = [j.get_sentiment() for j in self.entries if j.success]
+        self.sentiment = sum(sent_list) / len(sent_list)
 
     def fetchEntries(self, all=False):
         if self.latest:
@@ -82,6 +117,8 @@ class ChartSentiment(bb.ChartData):
                                                weeks, rank, change))
 
 
+
+
 # test case
 def test_case():
     test = bb.ChartData('hot-100', '1980-09-27')
@@ -100,7 +137,7 @@ def saturdays(start_date=None, end_date=None):
       and today (if neither argument is specified).
     """
     from datetime import date, datetime, timedelta
-    from pandas import date_range
+    from pandas import date_range, DateOffset
 
     # starting and ending Saturdays
     if start_date is None:
@@ -114,22 +151,36 @@ def saturdays(start_date=None, end_date=None):
         end_date = datetime.strptime(end_date, "%Y-%m-%d")
     end_date = end_date - timedelta(days=(end_date.weekday() + 2) % 7)
 
-    return date_range(start_date, end_date)
+    # TODO: troubleshoot date_range freq arg (DateOffset?)
+    return [str(i.date()) for i in date_range(start_date, end_date,
+                                              freq=DateOffset(days=7))]
 
 
 def extract_sentiment(lyrics):
     alchemy = AlchemyAPI()
-    return float(alchemy.sentiment('text', lyrics)['docSentiment']['score'])
+    response = alchemy.sentiment('text', lyrics)['docSentiment']
+    if 'score' in response.keys():
+        return float(response['score'])
+    return 0.0
 
 
 def extract_billboard_rankings(start=None, end=None):
     date_list = saturdays(start, end)
-    return date_list
-    # print str(saturdays()[0].date())
+    chart_list = tuple()
+    for week in date_list:
+        print week
+        chart_list += (ChartSentiment('hot-100', week),)
+    return chart_list
 
-# new = ChartSentiment('hot-100', '1980-09-20')
-# newest = ChartSentiment('hot-100', '2014-12-13')
-print 'hi'
 
-# TODO: complete extraction function to pull all rankings for each date
+# chart2010_2014 = extract_billboard_rankings('2010-01-01', '2014-12-17')
+# import pprint; pprint.pprint([(i.date, len(i.no_lyrics)) for i in chart2010_2014])
+# pickle.dump(chart2010_2014, open('chart2010_2014.p', 'wb'))
+print 'breakpoint'
+
+# TODO: overnight: run for 2010-2014 (uncomment sentiment); tomorrow pickle data
+# TODO: commit changes
 # TODO: add AlchemyApi attribution (http://www.alchemyapi.com/api/calling-the-api/)
+# TODO: write chart generating function (line + bars for missing)
+# TODO: main() to allow user to chart chosen date range (disclaimer about time to dl);
+# TODO:        then load pickle objects and generate graph for whole time series

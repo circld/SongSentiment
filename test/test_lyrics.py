@@ -1,5 +1,5 @@
 """
-Unit tests for lyric.py
+Unit tests for lyrics.py
 """
 
 import lyrics

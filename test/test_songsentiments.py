@@ -3,6 +3,7 @@ Unit tests for songsentiments.py
 """
 
 import songsentiments as ss
+from datetime import datetime
 
 
 def test_case():
@@ -54,7 +55,25 @@ class test_ChartSentiment(object):
         assert type(self.weekly_data.no_lyrics) is list
 
 
+class test_SongData(object):
+
+    song = ss.SongData()
+    song.add_song('Santana', 'Smooth', 'blah blah', 0.1142)
+
+    def test_has_song(self):
+        assert self.song.has_song('Santana', 'Smooth')
+
+    def test_not_have_song(self):
+        assert not self.song.has_song('Billy Joel', 'Piano Man')
+
+    def test_access_data(self):
+        assert self.song.get_sentiment('Santana', 'Smooth') == 0.1142
+
+
+
 class test_saturdays(object):
+
+    fmt = '%Y-%m-%d'
 
     def test_return_iterable(self):
         assert (i for i in ss.saturdays())
@@ -63,15 +82,32 @@ class test_saturdays(object):
         assert len(ss.saturdays()) > 0
 
     def test_startdate_is_saturday(self):
-        assert ss.saturdays()[0].weekday() == 5
+        assert datetime.strptime(ss.saturdays()[0],
+                                 self.fmt).weekday() == 5
 
     def test_enddate_is_saturday(self):
-        assert ss.saturdays()[-1].weekday() == 5
+        assert datetime.strptime(ss.saturdays()[-1],
+                                 self.fmt).weekday() == 5
 
     def test_usr_startdate_converts_to_saturday(self):
-        assert ss.saturdays('1990-05-16')[0].weekday() == 5
+        this_day = ss.saturdays('1990-05-16')[0]
+        assert datetime.strptime(this_day, self.fmt).weekday() == 5
 
     def test_usr_enddate_converts_to_saturday(self):
-        assert ss.saturdays(end_date='1976-09-19')[-1].weekday() == 5
+        this_day = ss.saturdays(end_date='1976-09-19')[-1]
+        assert datetime.strptime(this_day, self.fmt).weekday() == 5
 
 
+class test_extract_billboard_rankings(object):
+
+    charts = ss.extract_billboard_rankings('1980-01-01', '1980-01-15')
+
+    def test_returns_tuple(self):
+        assert type(self.charts) is tuple
+
+    def test_ChartSentiment_elements(self):
+        assert self.charts[0].name == 'hot-100' and \
+               self.charts[1].date == '1980-01-12'
+
+    def test_length(self):
+        assert len(self.charts) == 2
