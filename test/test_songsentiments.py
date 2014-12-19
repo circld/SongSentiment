@@ -6,10 +6,6 @@ import songsentiments as ss
 from datetime import datetime
 
 
-def test_case():
-    assert type(ss.test_case()) == list
-
-
 class test_EntrySentiment(object):
 
     real_song = ss.EntrySentiment('hotel california', 'eagles', 5, 11, 3, 12, -1)
@@ -25,7 +21,7 @@ class test_EntrySentiment(object):
                 self.real_song.peakPos == 5)
 
     def test_lyrics_is_string(self):
-        assert type(self.real_song.lyrics) is str
+        assert type(self.real_song.get_lyrics()) is str
 
     def test_lyrics_download_success(self):
         assert self.real_song.success
@@ -34,12 +30,26 @@ class test_EntrySentiment(object):
         assert not self.fake_song.success
 
     def test_fail_message(self):
-        assert self.fake_song.lyrics[:7] == 'http://'
+        assert self.fake_song.get_lyrics()[:7] == 'http://'
+
+    # class methods
+    def test_get_counter(self):
+        # counter only increments if lyrics are scraped
+        assert ss.EntrySentiment.get_counter() == 1
+
+    def test_reset_counter(self):
+        ss.EntrySentiment.reset_counter()
+        assert ss.EntrySentiment.get_counter() == 0
+
+    def test_increment_counter(self):
+        self.real_song.increment_counter()
+        self.fake_song.increment_counter()
+        assert ss.EntrySentiment.get_counter() == 2
 
 
 class test_ChartSentiment(object):
 
-    weekly_data = ss.ChartSentiment('hot-100', '1980-09-27')
+    weekly_data = ss.ChartSentiment('1980-09-27')
 
     def test_subclass_ChartData(self):
         from billboard.billboard import ChartData
@@ -48,8 +58,13 @@ class test_ChartSentiment(object):
     def test_instantiation_entries(self):
         assert self.weekly_data.entries[0] is not None
 
-    def test_all_lyrics(self):
-        assert len(self.weekly_data.all_lyrics) > 10000
+    def test_complete(self):
+        assert self.weekly_data.complete is True
+
+    def test_not_complete(self):
+        ss.EntrySentiment.counter = 100
+        fail_data = ss.ChartSentiment('1995-07-15', limit=100)
+        assert fail_data.complete is False
 
     def test_no_lyrics(self):
         assert type(self.weekly_data.no_lyrics) is list
@@ -59,6 +74,7 @@ class test_SongData(object):
 
     song = ss.SongData()
     song.add_song('Santana', 'Smooth', 'blah blah', 0.1142)
+    song.add_song('Singer', 'Song', 'http://www.songlyrics.com/', 0.0)
 
     def test_has_song(self):
         assert self.song.has_song('Santana', 'Smooth')
@@ -66,9 +82,14 @@ class test_SongData(object):
     def test_not_have_song(self):
         assert not self.song.has_song('Billy Joel', 'Piano Man')
 
+    def test_has_lyrics(self):
+        assert self.song.has_lyrics('Santana', 'Smooth')
+
+    def test_not_have_lyrics(self):
+        assert self.song.has_lyrics('Singer', 'song')
+
     def test_access_data(self):
         assert self.song.get_sentiment('Santana', 'Smooth') == 0.1142
-
 
 
 class test_saturdays(object):
@@ -111,3 +132,4 @@ class test_extract_billboard_rankings(object):
 
     def test_length(self):
         assert len(self.charts) == 2
+

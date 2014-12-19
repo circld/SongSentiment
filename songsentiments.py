@@ -40,6 +40,7 @@ class SongData(object):
 class EntrySentiment(bb.ChartEntry):
 
     store = SongData()
+    counter = 0
 
     def __init__(self, title, artist, peakPos, lastPos, weeks, rank, change):
         bb.ChartEntry.__init__(self, title, artist, peakPos, lastPos, weeks,
@@ -49,6 +50,8 @@ class EntrySentiment(bb.ChartEntry):
             self.success = lyrics[:7] != 'http://'
             sentiment = self.success and extract_sentiment(lyrics) or 0.0
             self.store.add_song(self.artist, self.title, lyrics, sentiment)
+            if self.success:
+                self.increment_counter()
         else:
             self.success = self.store.has_lyrics(self.artist, self.title)
 
@@ -58,15 +61,35 @@ class EntrySentiment(bb.ChartEntry):
     def get_sentiment(self):
         return self.store.get_sentiment(self.artist, self.title)
 
+    @classmethod
+    def get_counter(self):
+        return self.counter
+
+    @classmethod
+    def reset_counter(cls):
+        cls.counter = 0
+
+    @classmethod
+    def increment_counter(cls):
+        cls.counter += 1
+
 
 class ChartSentiment(bb.ChartData):
 
-    def __init__(self, name, date):
+    def __init__(self, date, limit=1000, name='hot-100'):
+        self.limit = limit
+        self.complete = None
         bb.ChartData.__init__(self, name, date)
+        if self.complete is None:
+           self.complete = True
         self.no_lyrics = [(i.artist, i.title, i.get_lyrics())
                           for i in self.entries if not i.success]
         sent_list = [j.get_sentiment() for j in self.entries if j.success]
-        self.sentiment = sum(sent_list) / len(sent_list)
+        if len(sent_list) > 0:
+            self.sentiment = sum(sent_list) / len(sent_list)
+        else:
+            self.sentiment = 0.0
+
 
     def fetchEntries(self, all=False):
         if self.latest:
@@ -113,16 +136,17 @@ class ChartSentiment(bb.ChartData):
             else:
                 change = str(change)
 
-            self.entries.append(EntrySentiment(title, artist, peakPos, lastPos,
+            if EntrySentiment.get_counter() < self.limit:
+                self.entries.append(EntrySentiment(title, artist, peakPos, lastPos,
                                                weeks, rank, change))
-
-
-
-
-# test case
-def test_case():
-    test = bb.ChartData('hot-100', '1980-09-27')
-    return test.entries  # list of ChartEntry objs (.title, .artist, etc)
+            else:
+                args = {'title': title, 'artist': artist,
+                        'rank': rank, 'date': self.date}
+                print("".join(['Reached limit. Did not add {title} by {artist}',
+                               ' (#{rank}) in week {date}.']
+                              ).format(**args))
+                self.complete = False
+                break
 
 
 def saturdays(start_date=None, end_date=None):
@@ -164,23 +188,48 @@ def extract_sentiment(lyrics):
     return 0.0
 
 
-def extract_billboard_rankings(start=None, end=None):
+def extract_billboard_rankings(start=None, end=None, limit=1000):
+    EntrySentiment.reset_counter()
     date_list = saturdays(start, end)
     chart_list = tuple()
     for week in date_list:
         print week
-        chart_list += (ChartSentiment('hot-100', week),)
+        chart_list += (ChartSentiment(week, limit),)
     return chart_list
 
 
-# chart2010_2014 = extract_billboard_rankings('2010-01-01', '2014-12-17')
-# import pprint; pprint.pprint([(i.date, len(i.no_lyrics)) for i in chart2010_2014])
-# pickle.dump(chart2010_2014, open('chart2010_2014.p', 'wb'))
-print 'breakpoint'
+def pickle_charts(start, end, limit=1000):
+    charts = extract_billboard_rankings(start, end, limit)
+    full_charts = [ch for ch in charts if ch.complete]
+    start_date = re.subn('-', '', full_charts[0].date)[0]
+    end_date = re.subn('-', '', full_charts[-1].date)[0]
+    new_name = '_'.join(['charts', start_date, end_date])
+    pickle.dump(full_charts, open(new_name +'.p', 'wb'))
 
-# TODO: overnight: run for 2010-2014 (uncomment sentiment); tomorrow pickle data
-# TODO: commit changes
-# TODO: add AlchemyApi attribution (http://www.alchemyapi.com/api/calling-the-api/)
-# TODO: write chart generating function (line + bars for missing)
-# TODO: main() to allow user to chart chosen date range (disclaimer about time to dl);
-# TODO:        then load pickle objects and generate graph for whole time series
+
+def unpickle_charts():
+    import glob
+    import os
+    pattern = 'charts_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_' + \
+              '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].p'
+    to_load = glob.glob1(os.getcwd(), pattern)
+    charts = list()
+    for f in to_load:
+        charts.extend(pickle.load(open(f, 'rb')))
+    return charts
+
+
+def visualize():
+    pass
+
+
+if __name__ == '__main__':
+
+    # TODO: overnight: run for 2010-2014 (uncomment sentiment); tomorrow pickle data
+    # TODO: add AlchemyApi attribution (http://www.alchemyapi.com/api/calling-the-api/)
+    # TODO: write chart generating function (line + bars for missing)
+    # TODO: main() to allow user to chart chosen date range (disclaimer about time to dl);
+    # TODO:        then load pickle objects and generate graph for whole time series
+
+    print 'breakpoint'
+
