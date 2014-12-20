@@ -193,8 +193,9 @@ def extract_billboard_rankings(start=None, end=None, limit=1000):
     date_list = saturdays(start, end)
     chart_list = tuple()
     for week in date_list:
-        print week
+        print 'Processing ' + week + '...',
         chart_list += (ChartSentiment(week, limit),)
+        print ' Complete'
     return chart_list
 
 
@@ -205,6 +206,7 @@ def pickle_charts(start, end, limit=1000):
     end_date = re.subn('-', '', full_charts[-1].date)[0]
     new_name = '_'.join(['charts', start_date, end_date])
     pickle.dump(full_charts, open(new_name +'.p', 'wb'))
+    return full_charts
 
 
 def unpickle_charts():
@@ -219,17 +221,101 @@ def unpickle_charts():
     return charts
 
 
-def visualize():
-    pass
+def visualize(chart_list):
+    import matplotlib.pyplot as plt
+    import math
+    week = [i.date for i in chart_list]
+    sent = [i.sentiment for i in chart_list]
+    missing = [len(i.no_lyrics) for i in chart_list]
+    n = len(week)
+    wk_num = xrange(n)
+    bar_width = 0.2 * math.e**n / (math.e**n + 10) + 0.2
+
+    # create figure
+    fig, ax1 = plt.subplots()
+    ax1.plot(wk_num, sent, '-', color='navy')
+    ax1.set_xlabel('Week')
+    ax1.set_ylabel('Mean sentiment (navy)')
+    plt.xticks((wk_num[0], wk_num[n/4], wk_num[n/2], wk_num[n*3/4], wk_num[-1]),
+               (week[0], week[n/4], week[n/2], week[n*3/4], week[-1]))
+    ax1.set_title(''.join(['Billboard Hot 100 mean sentiment by week\n',
+                           '({fr} to {to})']).format(fr=week[0], to=week[-1]),
+                  fontdict={'fontsize': 12})
+    ax2 = ax1.twinx()
+    ax2.bar(wk_num, missing, width=bar_width, color='orange', alpha=.5,
+            align='center')
+    ax2.set_ylabel('# missing lyrics (orange)')
+    ax2.set_ylim(top=4 * max(missing))
+    plt.show()
+
+
+def check_prompt(string):
+    from os import _exit
+    from datetime import date
+    pattern = re.compile('([qQ](uit)?|[eE]xit)')
+    if string == '':
+        return True
+    elif re.search(pattern, string):
+        print('Exiting program.')
+        _exit(1)
+    elif re.match('\d{4}-\d{2}-\d{2}', string):
+        if string < '1960-01-02' or string > str(date.today):
+            print('Invalid date. Must be between 1960-01-02 and today.')
+            return False
+        return True
+    else:
+        print('Invalid entry. Please try again (q to quit).')
+        return False
+
+
+def main():
+
+    # visualize data previously downloaded
+    charts = unpickle_charts()
+    visualize(charts)
+
+    # user selects date range to download & visualize
+    print('Specify your own date ranges to visualize.\n')
+    print(''.join(['Instructions: you will be prompted to enter a start ',
+                   'and end dates. Leaving the start date blank will start',
+                   ' the visualization from 1960-01-02, while leaving the',
+                   ' end date blank sets the end date to today.\n',
+                   'As a single week may take a up to a minute to process,',
+                   ' please be conservative with the length of the date ',
+                   'range you select.\n\nenter q (Q, quit, exit) at either ',
+                   'prompt to exit']))
+
+    okay = False
+    while not okay:
+        start = raw_input('Select start date (yyyy-mm-dd):\n>> ')
+        okay = check_prompt(start)
+    okay = False
+    while not okay:
+        end = raw_input('Select end date (yyyy-mm-dd):\n>> ')
+        okay = check_prompt(end)
+    if start == '':
+        start = None
+    if end == '':
+        end = None
+    save_it = raw_input('Enter Y to save data to current working directory.\n>> ')
+
+    print(''.join(['Please note that under a free account, you are limited ',
+                   'to 1,000 Alchemy API calls per day; this may result in',
+                   ' the plotted date range to be smaller than what you ',
+                   'had selected above.\n\n']))
+    if save_it in ('y', 'Y', 'yes', 'Yes'):
+        new_data = pickle_charts(start, end)
+    else:
+        new_data = extract_billboard_rankings(start, end)
+    visualize(new_data)
 
 
 if __name__ == '__main__':
 
-    # TODO: overnight: run for 2010-2014 (uncomment sentiment); tomorrow pickle data
+    # pickle_charts('2013-12-01', end='2014-12-01')
+
+    main()
+
+    # TODO: need way to preserve SongData during pickle/unpickle...
+    # TODO: overnight: run for 2010-2013
     # TODO: add AlchemyApi attribution (http://www.alchemyapi.com/api/calling-the-api/)
-    # TODO: write chart generating function (line + bars for missing)
-    # TODO: main() to allow user to chart chosen date range (disclaimer about time to dl);
-    # TODO:        then load pickle objects and generate graph for whole time series
-
-    print 'breakpoint'
-
