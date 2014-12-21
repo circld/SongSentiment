@@ -49,6 +49,9 @@ def extract_lyrics(artist, title):
     if html is not None:
         soup = BeautifulSoup(' '.join(html))
         lyrics_tag = soup.select('p[id="songLyricsDiv"]')  # html
+        # handle empty list (ie, no lyrics in html)
+        if not lyrics_tag:
+            return song_url
         # unicode (\n); hasattr() to ignore Tag elements
         lyrics = ', '.join([i.extract() for i in lyrics_tag[0]
                             if not hasattr(i, 'content')])

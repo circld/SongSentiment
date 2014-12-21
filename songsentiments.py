@@ -2,7 +2,6 @@
 Main body of project:
     - calls to billboard.py
     - calls to lyrics.py
-    - conducts analysis
     - builds visualizations
 """
 
@@ -168,14 +167,13 @@ def saturdays(start_date=None, end_date=None):
         start_date = date(1965, 1, 2)
     else:
         start_date = datetime.strptime(start_date, "%Y-%m-%d")
-        start_date = start_date + timedelta(days=5 - start_date.weekday())
+        start_date = start_date + timedelta(days=(5 - start_date.weekday()) % 7)
     if end_date is None:
         end_date = date.today()
     else:
         end_date = datetime.strptime(end_date, "%Y-%m-%d")
     end_date = end_date - timedelta(days=(end_date.weekday() + 2) % 7)
 
-    # TODO: troubleshoot date_range freq arg (DateOffset?)
     return [str(i.date()) for i in date_range(start_date, end_date,
                                               freq=DateOffset(days=7))]
 
@@ -301,7 +299,7 @@ def main():
 
     print(''.join(['Please note that under a free account, you are limited ',
                    'to 1,000 Alchemy API calls per day; this may result in',
-                   ' the plotted date range to be smaller than what you ',
+                   ' the plotted date range being smaller than what you ',
                    'had selected above.\n\n']))
     if save_it in ('y', 'Y', 'yes', 'Yes'):
         new_data = pickle_charts(start, end)
@@ -312,10 +310,8 @@ def main():
 
 if __name__ == '__main__':
 
-    # pickle_charts('2013-12-01', end='2014-12-01')
-
     main()
 
-    # TODO: need way to preserve SongData during pickle/unpickle...
-    # TODO: overnight: run for 2010-2013
+    # TODO: order chart objects & remove dupes in unpickle_charts()
+    # TODO: need way to preserve SongData during pickle/unpickle...(global var)
     # TODO: add AlchemyApi attribution (http://www.alchemyapi.com/api/calling-the-api/)

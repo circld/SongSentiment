@@ -106,9 +106,21 @@ class test_saturdays(object):
         assert datetime.strptime(ss.saturdays()[0],
                                  self.fmt).weekday() == 5
 
+    def test_saturday_after_start(self):
+        sat = ss.saturdays(start_date='2013-11-03')
+        assert sat[0] > '2013-11-03' and \
+               datetime.strptime(sat[0], self.fmt).weekday() == 5
+
     def test_enddate_is_saturday(self):
         assert datetime.strptime(ss.saturdays()[-1],
                                  self.fmt).weekday() == 5
+
+    def test_saturday_before_end(self):
+        end = '2013-11-01'
+        sat = ss.saturdays(end_date='2013-11-01')
+        assert sat[0] < '2013-11-01' and \
+               datetime.strptime(sat[0], self.fmt).weekday() == 5
+
 
     def test_usr_startdate_converts_to_saturday(self):
         this_day = ss.saturdays('1990-05-16')[0]
