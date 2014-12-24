@@ -1,0 +1,2 @@
+# Ensure that binary pickle files do not have their line endings changed
+*.p binary
