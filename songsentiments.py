@@ -1,8 +1,20 @@
 """
-Main body of project:
-    - calls to billboard.py
-    - calls to lyrics.py
-    - builds visualizations
+This module allows the downloading and visualization of Billboard Hot-100
+songs. Sentiment scores are produced using AlchemyAPI
+(http://www.alchemyapi.com/api/calling-the-api/).
+
+Ways I would like to extend this module include adding __cmp__, __eq__, and
+__hash__ to the ChartSentiment class in order to ensure uniqueness in the
+unpickle_charts (ordering of pickled objects is currently enforced only by
+naming convention, and overlapping date ranges will lead to erroneous charts.
+
+I also would like to implement an instance of the SongData class as a global
+variable that will be preserved via pickle_charts. This wastes up to 100
+songs per run of the program in terms of API calls, and makes it impossible
+to access individual song lyrics and sentiment scores across sessions.
+
+The tests associated with the projects do not cover some of the functionality
+added late into the project and needs to be updated.
 """
 
 import billboard.billboard as bb
@@ -180,9 +192,11 @@ def saturdays(start_date=None, end_date=None):
 
 def extract_sentiment(lyrics):
     alchemy = AlchemyAPI()
-    response = alchemy.sentiment('text', lyrics)['docSentiment']
-    if 'score' in response.keys():
-        return float(response['score'])
+    response = alchemy.sentiment('text', lyrics)
+    if 'docSentiment' not in response.keys():
+        return 0.0
+    if 'score' in response['docSentiment'].keys():
+        return float(response['docSentiment']['score'])
     return 0.0
 
 
@@ -312,6 +326,3 @@ if __name__ == '__main__':
 
     main()
 
-    # TODO: order chart objects & remove dupes in unpickle_charts()
-    # TODO: need way to preserve SongData during pickle/unpickle...(global var)
-    # TODO: add AlchemyApi attribution (http://www.alchemyapi.com/api/calling-the-api/)
