@@ -3,6 +3,8 @@ Author: Paul Garaud
 # Description
 This module allows the downloading and visualization of Billboard Hot-100 songs. Sentiment scores are produced using [AlchemyAPI](http://www.alchemyapi.com/api/calling-the-api/).
 
+![Song sentiment between May 2010 and December 2014](https://github.com/circld/SongSentiment/blob/master/figure_1.png?raw=true)
+
 # Installation
 This project imports [billboard.py](https://github.com/guoguo12/billboard-charts) and [AlchemyAPI](https://github.com/AlchemyAPI/alchemyapi_python) placed in your site-packages folder in folders called billboard and alchemyapi, respectively. You will also need to add a blank \_\_init\_\_.py file to the billboard folder for Python to recognize it as a module.
 
